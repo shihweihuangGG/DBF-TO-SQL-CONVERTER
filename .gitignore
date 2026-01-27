@@ -1,5 +1,19 @@
+# --- Security (IMPORTANT) ---
 config.json
+
+# --- Python Environment ---
 __pycache__/
-*.exe
+*.py[cod]
+*$py.class
+venv/
+.venv/
+
+# --- Build & Distribution ---
 dist/
 build/
+*.exe
+*.spec
+
+# --- IDEs ---
+.vscode/
+.idea/
