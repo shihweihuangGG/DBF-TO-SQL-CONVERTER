@@ -12,13 +12,14 @@
 # 8. CONFIG: Use 'config.json' for server persistence. NO HARDCODED SECRETS.
 #
 # 📝 VERSION HISTORY & PACKAGING
+# v1.6.4 - Final Sync: Matched APP_TITLE with GitHub Repo Name (DBF-SQL-Converter).
 # v1.6.1 - UX Fix: Clear User/Pass fields when switching to Windows Auth.
-# v1.6.0 - GitHub Public Prep: Removed secrets, added config.json & Multi-Auth.
-# v1.5.0 - Enabled Window Resizing & added Horizontal Scrollbar.
-# v1.1.0 - Implemented 'fast_executemany' optimization.
+# v1.1.0 - Implemented 'fast_executemany' optimization (49s -> 3s).
+# v1.0.0 - Initial Release with GUI and Threading.
 #
 # 📦 BUILD INSTRUCTION (Terminal):
-# pyinstaller --noconsole --onefile --name "DBF_to_SQL_Pro_v1.6.1" DbfToSqlConverter.py
+# Standard: pyinstaller --noconsole --onefile --name "DBF_to_SQL_v1.6.4" DbfToSqlConverter.py
+# Module:   python -m PyInstaller --noconsole --onefile --name "DBF_to_SQL_v1.6.4" DbfToSqlConverter.py
 # =================================================================
 
 import tkinter as tk
@@ -32,8 +33,9 @@ import time
 import json
 
 # --- Version & Constants ---
-VERSION = "1.6.1"
+VERSION = "1.6.4"
 CONFIG_FILE = "config.json"
+APP_TITLE = "DBF-SQL-Converter"
 
 # --- Styling ---
 UI_FONT_BOLD = ("Segoe UI", 10, "bold")
@@ -120,11 +122,9 @@ def toggle_auth_fields(event=None):
         user_entry.config(state="normal")
         pwd_entry.config(state="normal")
     else:
-        # Clear fields when they are not needed for safety/clarity
         user_entry.config(state="normal")
         user_entry.delete(0, tk.END)
         user_entry.config(state="disabled")
-        
         pwd_entry.config(state="normal")
         pwd_entry.delete(0, tk.END)
         pwd_entry.config(state="disabled")
@@ -188,7 +188,7 @@ def process_conversion():
 
 # --- UI Setup ---
 root = tk.Tk()
-root.title(f"DBF to MSSQL Enterprise - v{VERSION}")
+root.title(f"{APP_TITLE} - v{VERSION}")
 root.geometry("600x820")
 root.minsize(580, 750)
 
@@ -209,7 +209,6 @@ auth_mode.set(config.get("auth_mode", "Windows Auth"))
 auth_mode.pack(fill="x", pady=2)
 auth_mode.bind("<<ComboboxSelected>>", toggle_auth_fields)
 
-# Auth Credentials
 auth_subframe = tk.Frame(frame_top)
 auth_subframe.pack(fill="x", pady=5)
 tk.Label(auth_subframe, text="User:", font=UI_FONT_NORMAL).grid(row=0, column=0, sticky="w")
@@ -222,7 +221,6 @@ auth_subframe.columnconfigure(1, weight=1)
 db_select = ttk.Combobox(frame_top, font=UI_FONT_NORMAL, state="readonly", postcommand=on_db_dropdown_click)
 db_select.set("Click to select database"); db_select.pack(fill="x", pady=10)
 
-# Initialization
 toggle_auth_fields()
 
 # 2. Source Section
@@ -258,5 +256,5 @@ scrollbar_y.grid(row=0, column=1, sticky="ns")
 scrollbar_x.grid(row=1, column=0, sticky="ew")
 frame_log.grid_rowconfigure(0, weight=1); frame_log.grid_columnconfigure(0, weight=1)
 
-log_message(f"UX Refined v{VERSION} ready.")
+log_message(f"Welcome to {APP_TITLE} v{VERSION}.")
 root.mainloop()
