@@ -1,4 +1,4 @@
-# DBF-SQL-Converter-TW
+# DBF-SQL-Converter
 
 ![Origin](https://img.shields.io/badge/Origin-Taiwan-red?style=flat-square)
 ![License](https://img.shields.io/badge/License-GPL--3.0-green?style=flat-square)
