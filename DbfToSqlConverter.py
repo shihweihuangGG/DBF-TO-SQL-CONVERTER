@@ -12,6 +12,7 @@
 # 8. CONFIG: Use 'config.json' for server persistence. NO HARDCODED SECRETS.
 #
 # 📝 VERSION HISTORY & PACKAGING
+# v1.7.1 - Encoding Support: Added user-selectable file encoding (utf-8, big5, gb2312, gbk, latin1, cp1252, ascii) for better DBF compatibility.
 # v1.7.0 - Error Handling: Enhanced dbfread import safety with detailed traceback logging for Windows Server 2016 compatibility.
 # v1.6.9 - PyInstaller Fix: Changed to --onedir mode and added comprehensive hidden imports for dbfread.
 # v1.6.8 - Version Bump: Advanced to next version.
@@ -19,7 +20,7 @@
 # v1.6.5 - Compatibility: Added dynamic ODBC driver detection (fallback to {SQL Server}).
 #
 # 📦 BUILD INSTRUCTION (Terminal):
-# python -m PyInstaller --noconsole --onedir --collect-all dbfread --hidden-import=dbfread --hidden-import=dbfread.dbf --hidden-import=dbfread.field_parser --hidden-import=dbfread.ifiles --hidden-import=dbfread.exceptions --name "DBF_to_SQL_v1.7.0" DbfToSqlConverter.py -y
+# python -m PyInstaller --noconsole --onedir --collect-all dbfread --hidden-import=dbfread --hidden-import=dbfread.dbf --hidden-import=dbfread.field_parser --hidden-import=dbfread.ifiles --hidden-import=dbfread.exceptions --name "DBF_to_SQL_v1.7.1" DbfToSqlConverter.py -y
 # =================================================================
 
 import tkinter as tk
@@ -51,7 +52,7 @@ except ImportError as e:
     print(f"sys.path: {sys.path}")
 
 # --- Version & Constants ---
-VERSION = "1.7.0"
+VERSION = "1.7.1"
 CONFIG_FILE = "config.json"
 APP_TITLE = "DBF-SQL-Converter"
 
@@ -189,14 +190,16 @@ def process_conversion():
     db_name = db_select.get().strip()
     dbf_path = file_label.get().strip()
     target_table_name = table_name_var.get().strip()
+    selected_encoding = encoding_var.get().strip()
     try:
         start_time = time.time()
         log_message(f">>> Task Started: [{target_table_name}]")
+        log_message(f"Encoding: {selected_encoding}")
         
         # Safely import and load DBF
         try:
             from dbfread import DBF as DBFClass
-            table = DBFClass(dbf_path, encoding='big5', load=True, ignore_missing_memofile=True)
+            table = DBFClass(dbf_path, encoding=selected_encoding, load=True, ignore_missing_memofile=True)
         except Exception as import_err:
             log_message(f"❌ DBF Import Error: {import_err}")
             import traceback
@@ -268,6 +271,11 @@ frame_file.pack(padx=15, pady=5, fill="x")
 file_label = tk.StringVar(value="No file selected")
 tk.Button(frame_file, text="Select DBF File", font=UI_FONT_NORMAL, command=select_file).pack()
 tk.Label(frame_file, textvariable=file_label, wraplength=500, fg="#555", font=("Segoe UI", 9, "italic")).pack()
+
+tk.Label(frame_file, text="File Encoding:", font=UI_FONT_NORMAL).pack(anchor="w", pady=(5,2))
+encoding_var = tk.StringVar(value="utf-8")
+encoding_combo = ttk.Combobox(frame_file, textvariable=encoding_var, values=["utf-8", "big5", "gb2312", "gbk", "latin1", "cp1252", "ascii"], state="readonly", font=UI_FONT_NORMAL)
+encoding_combo.pack(fill="x", pady=2)
 
 frame_table = tk.LabelFrame(root, text=" 3. Destination Table Settings ", font=UI_FONT_BOLD, padx=10, pady=10)
 frame_table.pack(padx=15, pady=5, fill="x")
