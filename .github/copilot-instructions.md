@@ -30,6 +30,41 @@ The application can be run directly as a Python script or via its compiled execu
 *   **From source:** `python DbfToSqlConverter.py`
 *   **From executable:** `dist/DBF_to_SQL_v1.7.0/DBF_to_SQL_v1.7.0.exe` (path may vary based on PyInstaller output)
 
+### Code Signing (Optional but Recommended)
+
+To prevent antivirus software from flagging the executable as suspicious, code signing is recommended for deployment, especially to restricted environments like Windows Server 2016.
+
+**Prerequisites:**
+- Windows SDK installed (includes `signtool.exe`)
+- Code signing certificate (.pfx file) from a trusted Certificate Authority or self-signed certificate
+
+**Signing Steps:**
+
+1. **Using an existing certificate:**
+   ```bash
+   signtool sign /f "C:\path\to\certificate.pfx" /p "password" /t "http://timestamp.digicert.com" "dist\DBF_to_SQL_v1.7.0\DBF_to_SQL_v1.7.0.exe"
+   ```
+   *Replace the certificate path, password, and timestamp server as needed.*
+
+2. **Verify the signature:**
+   ```bash
+   signtool verify /pa "dist\DBF_to_SQL_v1.7.0\DBF_to_SQL_v1.7.0.exe"
+   ```
+
+**Self-Signed Certificate (for testing only):**
+   ```bash
+   # Create self-signed certificate
+   New-SelfSignedCertificate -CertStoreLocation cert:\CurrentUser\My -Subject "CN=DBF-SQL-Converter" -KeyUsage DigitalSignature -Type CodeSigningCert
+   
+   # Export to .pfx
+   $cert = Get-ChildItem -Path Cert:\CurrentUser\My | Where-Object { $_.Subject -eq 'CN=DBF-SQL-Converter' }
+   Export-PfxCertificate -Cert $cert -FilePath cert.pfx -Password (ConvertTo-SecureString -String "password" -AsPlainText -Force)
+   ```
+
+**Antivirus Verification:**
+   - Upload the signed executable to [VirusTotal](https://www.virustotal.com/) to check for false positives
+   - Allow the executable through Windows Defender or corporate antivirus policies as needed
+
 ## 3. Project-Specific Conventions and Patterns
 
 ### AI Maintenance Guidelines
