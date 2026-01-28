@@ -1,5 +1,7 @@
 # --- Security (IMPORTANT) ---
 config.json
+*.pfx
+*.pem
 
 # --- Python Environment ---
 __pycache__/
