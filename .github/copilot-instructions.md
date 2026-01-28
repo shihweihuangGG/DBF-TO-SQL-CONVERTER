@@ -18,15 +18,17 @@ The `DBF-SQL-Converter` is a Python-based desktop application designed to migrat
 The application is packaged into a standalone executable using `PyInstaller`.
 To build the application, execute the following command in the terminal:
 ```bash
-python -m PyInstaller --noconsole --onefile --name "DBF_to_SQL_v1.6.5" DbfToSqlConverter.py
+python -m PyInstaller --noconsole --onedir --collect-all dbfread --hidden-import=dbfread --hidden-import=dbfread.dbf --hidden-import=dbfread.field_parser --hidden-import=dbfread.ifiles --hidden-import=dbfread.exceptions --name "DBF_to_SQL_v1.7.0" DbfToSqlConverter.py -y
 ```
+*Note: Changed from `--onefile` to `--onedir` mode to resolve PyInstaller import resolution issues with dbfread. The executable will be in a folder with supporting files.*
 *Note: The version in `--name` should match the `VERSION` variable in `DbfToSqlConverter.py`.*
+*Note: Removed deprecated hidden imports (`dbfread.table`, `dbfread.record`, `dbfread._version`, `dbfread._compat`) and added `dbfread.ifiles` for better module resolution.*
 
 ### Running the Application
 
 The application can be run directly as a Python script or via its compiled executable:
 *   **From source:** `python DbfToSqlConverter.py`
-*   **From executable:** `build/DBF_to_SQL_v1.6.5/DBF_to_SQL_v1.6.5.exe` (path may vary based on PyInstaller output)
+*   **From executable:** `dist/DBF_to_SQL_v1.7.0/DBF_to_SQL_v1.7.0.exe` (path may vary based on PyInstaller output)
 
 ## 3. Project-Specific Conventions and Patterns
 

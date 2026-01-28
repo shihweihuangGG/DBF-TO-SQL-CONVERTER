@@ -12,19 +12,18 @@
 # 8. CONFIG: Use 'config.json' for server persistence. NO HARDCODED SECRETS.
 #
 # 📝 VERSION HISTORY & PACKAGING
-# v1.6.4 - Final Sync: Matched APP_TITLE with GitHub Repo Name (DBF-SQL-Converter).
-# v1.6.1 - UX Fix: Clear User/Pass fields when switching to Windows Auth.
-# v1.1.0 - Implemented 'fast_executemany' optimization (49s -> 3s).
-# v1.0.0 - Initial Release with GUI and Threading.
+# v1.7.0 - Error Handling: Enhanced dbfread import safety with detailed traceback logging for Windows Server 2016 compatibility.
+# v1.6.9 - PyInstaller Fix: Changed to --onedir mode and added comprehensive hidden imports for dbfread.
+# v1.6.8 - Version Bump: Advanced to next version.
+# v1.6.6 - Packaging: Added --collect-all dbfread to resolve __import__ exception.
+# v1.6.5 - Compatibility: Added dynamic ODBC driver detection (fallback to {SQL Server}).
 #
 # 📦 BUILD INSTRUCTION (Terminal):
-# Standard: pyinstaller --noconsole --onefile --name "DBF_to_SQL_v1.6.4" DbfToSqlConverter.py
-# Module:   python -m PyInstaller --noconsole --onefile --name "DBF_to_SQL_v1.6.4" DbfToSqlConverter.py
+# python -m PyInstaller --noconsole --onedir --collect-all dbfread --hidden-import=dbfread --hidden-import=dbfread.dbf --hidden-import=dbfread.field_parser --hidden-import=dbfread.ifiles --hidden-import=dbfread.exceptions --name "DBF_to_SQL_v1.7.0" DbfToSqlConverter.py -y
 # =================================================================
 
 import tkinter as tk
 from tkinter import filedialog, ttk
-from dbfread import DBF
 import pyodbc
 from datetime import datetime
 import os
@@ -32,8 +31,27 @@ import threading
 import time
 import json
 
+# --- Critical Fix for PyInstaller Import Error ---
+try:
+    import dbfread
+    from dbfread import DBF
+    import dbfread.dbf           # Force-loading sub-module
+    import dbfread.field_parser   # Force-loading sub-module
+    import dbfread.table          # Force-loading sub-module
+    import dbfread.record         # Force-loading sub-module
+    import dbfread.exceptions     # Force-loading sub-module
+except ImportError as e:
+    # This will show up in the console if the EXE fails to find the library
+    print(f"Critical Import Failure: {e}")
+    print(f"dbfread module path: {dbfread.__file__ if 'dbfread' in dir() else 'NOT FOUND'}")
+    import traceback
+    traceback.print_exc()
+    import sys
+    print(f"Python version: {sys.version}")
+    print(f"sys.path: {sys.path}")
+
 # --- Version & Constants ---
-VERSION = "1.6.4"
+VERSION = "1.7.0"
 CONFIG_FILE = "config.json"
 APP_TITLE = "DBF-SQL-Converter"
 
@@ -50,7 +68,20 @@ def log_message(message):
     state_log.see(tk.END)
     state_log.config(state='disabled')
 
-# --- Configuration Management ---
+def get_best_driver():
+    installed_drivers = pyodbc.drivers()
+    priorities = [
+        "ODBC Driver 18 for SQL Server",
+        "ODBC Driver 17 for SQL Server",
+        "ODBC Driver 13 for SQL Server",
+        "SQL Server Native Client 11.0",
+        "SQL Server"
+    ]
+    for driver in priorities:
+        if driver in installed_drivers:
+            return f"{{{driver}}}"
+    return "{SQL Server}"
+
 def load_config():
     if os.path.exists(CONFIG_FILE):
         try:
@@ -74,11 +105,10 @@ def save_config():
         with open(CONFIG_FILE, "w") as f:
             json.dump(config, f, indent=4)
 
-# --- Database Operations ---
 def get_connection_string(database="master"):
     server = server_combo.get().strip()
     mode = auth_mode.get()
-    driver = "{ODBC Driver 17 for SQL Server}"
+    driver = get_best_driver()
     
     if mode == "Windows Auth":
         return f"DRIVER={driver};SERVER={server};DATABASE={database};Trusted_Connection=yes;Connection Timeout=5;"
@@ -162,7 +192,16 @@ def process_conversion():
     try:
         start_time = time.time()
         log_message(f">>> Task Started: [{target_table_name}]")
-        table = DBF(dbf_path, encoding='big5', load=True, ignore_missing_memofile=True)
+        
+        # Safely import and load DBF
+        try:
+            from dbfread import DBF as DBFClass
+            table = DBFClass(dbf_path, encoding='big5', load=True, ignore_missing_memofile=True)
+        except Exception as import_err:
+            log_message(f"❌ DBF Import Error: {import_err}")
+            import traceback
+            log_message(f"Traceback: {traceback.format_exc()}")
+            return
         
         conn_str = get_connection_string(database=db_name)
         with pyodbc.connect(conn_str) as conn:
@@ -182,7 +221,9 @@ def process_conversion():
         root.after(0, lambda: progress_bar.config(value=100))
         log_message(f"🎉 SUCCESS: {len(table)} rows in {duration:.2f}s")
     except Exception as e:
+        import traceback
         log_message(f"❌ Error: {str(e)}")
+        log_message(f"Details: {traceback.format_exc()}")
     finally:
         root.after(0, lambda: btn_run.config(state='normal'))
 
@@ -194,7 +235,6 @@ root.minsize(580, 750)
 
 config = load_config()
 
-# 1. Connection Section
 frame_top = tk.LabelFrame(root, text=" 1. SQL Server Connection ", font=UI_FONT_BOLD, padx=10, pady=10)
 frame_top.pack(padx=15, pady=5, fill="x")
 
@@ -223,20 +263,17 @@ db_select.set("Click to select database"); db_select.pack(fill="x", pady=10)
 
 toggle_auth_fields()
 
-# 2. Source Section
 frame_file = tk.LabelFrame(root, text=" 2. Source Data Selection ", font=UI_FONT_BOLD, padx=10, pady=10)
 frame_file.pack(padx=15, pady=5, fill="x")
 file_label = tk.StringVar(value="No file selected")
 tk.Button(frame_file, text="Select DBF File", font=UI_FONT_NORMAL, command=select_file).pack()
 tk.Label(frame_file, textvariable=file_label, wraplength=500, fg="#555", font=("Segoe UI", 9, "italic")).pack()
 
-# 3. Target Section
 frame_table = tk.LabelFrame(root, text=" 3. Destination Table Settings ", font=UI_FONT_BOLD, padx=10, pady=10)
 frame_table.pack(padx=15, pady=5, fill="x")
 table_name_var = tk.StringVar()
 tk.Entry(frame_table, textvariable=table_name_var, width=45, font=("Consolas", 11, "bold"), fg="#D32F2F", justify="center").pack()
 
-# 4. Action Section
 frame_action = tk.Frame(root, padx=15, pady=5)
 frame_action.pack(fill="x")
 progress_bar = ttk.Progressbar(frame_action, orient="horizontal", mode="determinate")
@@ -244,7 +281,6 @@ progress_bar.pack(fill="x", pady=5)
 btn_run = tk.Button(frame_action, text="🚀 EXECUTE MIGRATION", bg="#005a9e", fg="white", font=("Segoe UI", 12, "bold"), height=2, command=start_conversion_threaded)
 btn_run.pack(fill="x", pady=5)
 
-# 5. Logs Section
 frame_log = tk.LabelFrame(root, text=" Operation Logs ", font=UI_FONT_BOLD, padx=10, pady=10)
 frame_log.pack(padx=15, pady=10, fill="both", expand=True)
 state_log = tk.Text(frame_log, height=8, state='disabled', bg="#fdfdfd", font=LOG_FONT, borderwidth=0, wrap="none")
@@ -256,5 +292,7 @@ scrollbar_y.grid(row=0, column=1, sticky="ns")
 scrollbar_x.grid(row=1, column=0, sticky="ew")
 frame_log.grid_rowconfigure(0, weight=1); frame_log.grid_columnconfigure(0, weight=1)
 
+best_driver = get_best_driver()
 log_message(f"Welcome to {APP_TITLE} v{VERSION}.")
+log_message(f"Using Database Driver: {best_driver}")
 root.mainloop()
